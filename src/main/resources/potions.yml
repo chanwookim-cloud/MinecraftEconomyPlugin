@@ -1,0 +1,145 @@
+sell_potions:
+  WATER:
+    type: WATER
+    name: "물병"
+    price: 30
+    extended: false
+    upgraded: false
+  MUNDANE:
+    type: MUNDANE
+    name: "평범한 물약"
+    price: 80
+    extended: false
+    upgraded: false
+  THICK:
+    type: THICK
+    name: "진한 물약"
+    price: 90
+    extended: false
+    upgraded: false
+  AWKWARD:
+    type: AWKWARD
+    name: "어색한 물약"
+    price: 120
+    extended: false
+    upgraded: false
+  SWIFTNESS:
+    type: SWIFTNESS
+    name: "신속의 물약"
+    price: 200
+    extended: false
+    upgraded: false
+  SLOWNESS:
+    type: SLOWNESS
+    name: "감속의 물약"
+    price: 250
+    extended: false
+    upgraded: false
+  LEAPING:
+    type: LEAPING
+    name: "도약의 물약"
+    price: 300
+    extended: false
+    upgraded: false
+  STRENGTH:
+    type: STRENGTH
+    name: "힘의 물약"
+    price: 400
+    extended: false
+    upgraded: false
+  HEALING:
+    type: INSTANT_HEAL
+    name: "치유의 물약"
+    price: 300
+    extended: false
+    upgraded: false
+  HARMING:
+    type: INSTANT_DAMAGE
+    name: "고통의 물약"
+    price: 350
+    extended: false
+    upgraded: false
+  POISON:
+    type: POISON
+    name: "독 물약"
+    price: 300
+    extended: false
+    upgraded: false
+  REGENERATION:
+    type: REGEN
+    name: "재생의 물약"
+    price: 500
+    extended: false
+    upgraded: false
+  FIRE_RESISTANCE:
+    type: FIRE_RESISTANCE
+    name: "화염 저항의 물약"
+    price: 450
+    extended: false
+    upgraded: false
+  WATER_BREATHING:
+    type: WATER_BREATHING
+    name: "수중 호흡의 물약"
+    price: 300
+    extended: false
+    upgraded: false
+  NIGHT_VISION:
+    type: NIGHT_VISION
+    name: "야간 투시의 물약"
+    price: 450
+    extended: false
+    upgraded: false
+  INVISIBILITY:
+    type: INVISIBILITY
+    name: "투명화의 물약"
+    price: 600
+    extended: false
+    upgraded: false
+  SLOW_FALLING:
+    type: SLOW_FALLING
+    name: "느린 낙하의 물약"
+    price: 650
+    extended: false
+    upgraded: false
+  WEAKNESS:
+    type: WEAKNESS
+    name: "나약함의 물약"
+    price: 750
+    extended: false
+    upgraded: false
+  TURTLE_MASTER:
+    type: TURTLE_MASTER
+    name: "거북도사의 물약"
+    price: 850
+    extended: false
+    upgraded: false
+  OOZING:
+    type: OOZING
+    name: "점액화 물약"
+    price: 475
+  WIND_CHARGED:
+    type: WIND_CHARGED
+    name: "돌풍의 물약"
+    price: 775
+  INFESTED:
+    type: INFESTED
+    name: "벌레 먹음의 물약"
+    price: 75
+  WEAVING:
+    type: WEAVING
+    name: "방적의 물약"
+    price: 225
+
+multipliers:
+  UPGRADED:
+    key: UPGRADED
+    multiplier: 2
+  SPLASH:
+    key: SPLASH
+    multiplier: 2
+  LINGERING:
+    key: LINGERING
+    multiplier: 4
+  EXTENDED:
+    key: EXTENDED
+    multiplier: 3

@@ -1,0 +1,101 @@
+enchanted_books:
+  SHARPNESS:
+    name: "날카로움 V"
+    price: 500
+    level: 5
+  PROTECTION_4:
+    name: "보호 IV"
+    price: 400
+    level: 4
+  UNBREAKING_3:
+    name: "내구성 III"
+    price: 300
+    level: 3
+  MENDING_1:
+    name: "수선"
+    price: 1000
+    level: 1
+  FIRE_ASPECT_2:
+    name: "발화 II"
+    price: 200
+    level: 2
+  SWEEPING_EDGE_3:
+    name: "휩쓸기 III"
+    price: 300
+    level: 3
+  LOOTING_3:
+    name: "약탈 III"
+    price: 300
+    level: 3
+  RIPTIDE_3:
+    name: "급류 III"
+    price: 300
+    level: 3
+  CHANNELING_1:
+    name: "집전"
+    price: 500
+    level: 1
+  LOYALTY_3:
+    name: "충성 III"
+    price: 300
+    level: 3
+  IMPALING_5:
+    name: "찌르기 V"
+    price: 500
+    level: 5
+  POWER_5:
+    name: "힘 V"
+    price: 500
+    level: 5
+  KNOCKBACK_2:
+    name: "밀치기 II"
+    price: 200
+    level: 2
+  FLAME_1:
+    name: "화염"
+    price: 250
+    level: 1
+  INFINITY_1:
+    name: "무한"
+    price: 1000
+    level: 1
+  SILK_TOUCH_1:
+    name: "섬세한 손길"
+    price: 1000
+    level: 1
+  RESPIRATION_3:
+    name: "호흡 III"
+    price: 300
+    level: 3
+  AQUA_AFFINITY_1:
+    name: "친수성"
+    price: 100
+    level: 1
+  THORNS_2:
+    name: "가시 II"
+    price: 200
+    level: 2
+  SWIFT_SNEAK_3:
+    name: "신속한 잠행 III"
+    price: 300
+    level: 3
+  FEATHER_FALLING_4:
+    name: "가벼운 착지 IV"
+    price: 400
+    level: 4
+  DEPTH_STRIDER_3:
+    name: "물갈퀴 III"
+    price: 300
+    level: 3
+  FROST_WALKER_2:
+    name: "차가운 발걸음 II"
+    price: 200
+    level: 2
+  SOUL_SPEED_3:
+    name: "영혼 가속 III"
+    price: 300
+    level: 3
+  EFFICIENCY_5:
+    name: "효율 V"
+    price: 500
+    level: 5

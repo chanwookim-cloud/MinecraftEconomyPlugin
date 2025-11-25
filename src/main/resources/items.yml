@@ -1,0 +1,359 @@
+buy:
+  WOODEN_SWORD:
+    name: "나무 검"
+    price: 10
+  STONE_SWORD:
+    name: "돌 검"
+    price: 20
+  COPPER_SWORD:
+    name: "구리 검"
+    price: 34
+  GOLDEN_SWORD:
+    name: "금 검"
+    price: 70
+  IRON_SWORD:
+    name: "철 검"
+    price: 50
+  DIAMOND_SWORD:
+    name: "다이아몬드 검"
+    price: 100
+  NETHERITE_SWORD:
+    name: "네더라이트 검"
+    price: 200
+
+  WOODEN_PICKAXE:
+    name: "나무 곡괭이"
+    price: 15
+  STONE_PICKAXE:
+    name: "돌 곡괭이"
+    price: 30
+  COPPER_PICKAXE:
+    name: "구리 곡괭이"
+    price: 51
+  GOLDEN_PICKAXE:
+    name: "금 곡괭이"
+    price: 105
+  IRON_PICKAXE:
+    name: "철 곡괭이"
+    price: 75
+  DIAMOND_PICKAXE:
+    name: "다이아몬드 곡괭이"
+    price: 150
+  NETHERITE_PICKAXE:
+    name: "네더라이트 곡괭이"
+    price: 300
+
+  WOODEN_AXE:
+    name: "나무 도끼"
+    price: 15
+  STONE_AXE:
+    name: "돌 도끼"
+    price: 30
+  COPPER_AXE:
+    name: "구리 도끼"
+    price: 51
+  GOLDEN_AXE:
+    name: "금 도끼"
+    price: 105
+  IRON_AXE:
+    name: "철 도끼"
+    price: 75
+  DIAMOND_AXE:
+    name: "다이아몬드 도끼"
+    price: 150
+  NETHERITE_AXE:
+    name: "네더라이트 도끼"
+    price: 300
+
+  LEATHER_HELMET:
+    name: "가죽 투구"
+    price: 25
+  LEATHER_CHESTPLATE:
+    name: "가죽 흉갑"
+    price: 40
+  LEATHER_LEGGINGS:
+    name: "가죽 레깅스"
+    price: 35
+  LEATHER_BOOTS:
+    name: "가죽 부츠"
+    price: 20
+
+  COPPER_HELMET:
+    name: "구리 투구"
+    price: 85
+  COPPER_CHESTPLATE:
+    name: "구리 흉갑"
+    price: 136
+  COPPER_LEGGINGS:
+    name: "구리 레깅스"
+    price: 119
+  COPPER_BOOTS:
+    name: "구리 부츠"
+    price: 68
+
+  GOLDEN_HELMET:
+    name: "금 투구"
+    price: 175
+  GOLDEN_CHESTPLATE:
+    name: "금 흉갑"
+    price: 280
+  GOLDEN_LEGGINGS:
+    name: "금 레깅스"
+    price: 245
+  GOLDEN_BOOTS:
+    name: "금 부츠"
+    price: 140
+
+  IRON_HELMET:
+    name: "철 투구"
+    price: 125
+  IRON_CHESTPLATE:
+    name: "철 흉갑"
+    price: 200
+  IRON_LEGGINGS:
+    name: "철 레깅스"
+    price: 175
+  IRON_BOOTS:
+    name: "철 부츠"
+    price: 100
+
+  DIAMOND_HELMET:
+    name: "다이아몬드 투구"
+    price: 250
+  DIAMOND_CHESTPLATE:
+    name: "다이아몬드 흉갑"
+    price: 400
+  DIAMOND_LEGGINGS:
+    name: "다이아몬드 레깅스"
+    price: 350
+  DIAMOND_BOOTS:
+    name: "다이아몬드 부츠"
+    price: 200
+
+  NETHERITE_HELMET:
+    name: "네더라이트 투구"
+    price: 500
+  NETHERITE_CHESTPLATE:
+    name: "네더라이트 흉갑"
+    price: 800
+  NETHERITE_LEGGINGS:
+    name: "네더라이트 레깅스"
+    price: 700
+  NETHERITE_BOOTS:
+    name: "네더라이트 부츠"
+    price: 400
+
+  TRIDENT:
+    name: "삼지창"
+    price: 10000
+  ELYTRA:
+    name: "겉날개"
+    price: 500000
+  FIREWORK_ROCKET:
+    name: "폭죽 로켓"
+    price: 5
+  TNT:
+    name: "TNT"
+    price: 1000
+  BOW:
+    name: "활"
+    price: 150
+  ARROW:
+    name: "화살"
+    price: 3
+  SPECTRAL_ARROW:
+    name: "발광 화살"
+    price: 6
+  ANVIL:
+    name: "모루"
+    price: 775
+  BREWING_STAND:
+    name: "양조기"
+    price: 800
+  EXPERIENCE_BOTTLE:
+    name: "경험치 병"
+    price: 100
+  GOLDEN_APPLE:
+    name: "황금 사과"
+    price: 290
+  GOLDEN_CARROT:
+    name: "황금 당근"
+    price: 40
+  ENCHANTING_TABLE:
+    name: "마법 부여대"
+    price: 1000
+  BUCKET:
+    name: "양동이"
+    price: 75
+
+sell:
+  COAL:
+    name: "석탄"
+    price: 10
+  COPPER_INGOT:
+    name: "구리 주괴"
+    price: 17
+  IRON_INGOT:
+    name: "철 주괴"
+    price: 25
+  GOLD_INGOT:
+    name: "금 주괴"
+    price: 35
+  EMERALD:
+    name: "에메랄드"
+    price: 40
+  DIAMOND:
+    name: "다이아몬드"
+    price: 50
+  QUARTZ:
+    name: "석영"
+    price: 30
+  NETHERITE_INGOT:
+    name: "네더라이트 주괴"
+    price: 200
+  APPLE:
+    name: "사과"
+    price: 1
+  POTATO:
+    name: "감자"
+    price: 3
+  BEETROOT:
+    name: "비트"
+    price: 3
+  WHEAT:
+    name: "밀"
+    price: 4
+  CARROT:
+    name: "당근"
+    price: 2
+  MELON_SLICE:
+    name: "수박 조각"
+    price: 5
+  PUMPKIN:
+    name: "호박"
+    price: 3
+  SUGAR_CANE:
+    name: "사탕수수"
+    price: 2
+  COCOA_BEANS:
+    name: "코코아콩"
+    price: 4
+  NETHER_WART:
+    name: "네더 사마귀"
+    price: 20
+
+  CHICKEN:
+    name: "익히지 않은 닭고기"
+    price: 2
+  COOKED_CHICKEN:
+    name: "익힌 닭고기"
+    price: 6
+  MUTTON:
+    name: "익히지 않은 양고기"
+    price: 2
+  COOKED_MUTTON:
+    name: "익힌 양고기"
+    price: 6
+  PORKCHOP:
+    name: "익히지 않은 돼지고기"
+    price: 3
+  COOKED_PORKCHOP:
+    name: "익힌 돼지고기"
+    price: 8
+  BEEF:
+    name: "익히지 않은 소고기"
+    price: 3
+  COOKED_BEEF:
+    name: "스테이크"
+    price: 8
+  RABBIT:
+    name: "익히지 않은 토끼고기"
+    price: 3
+  COOKED_RABBIT:
+    name: "익힌 토끼고기"
+    price: 5
+  RABBIT_FOOT:
+    name: "토끼발"
+    price: 20
+  RABBIT_HIDE:
+    name: "토끼 가죽"
+    price: 10
+  COD:
+    name: "대구"
+    price: 2
+  COOKED_COD:
+    name: "익힌 대구"
+    price: 5
+  SALMON:
+    name: "익히지 않은 연어"
+    price: 2
+  COOKED_SALMON:
+    name: "익힌 연어"
+    price: 6
+
+  LEATHER:
+    name: "가죽"
+    price: 5
+  INK_SAC:
+    name: "먹물 주머니"
+    price: 10
+  ZOMBIE_HEAD:
+    name: "좀비 머리"
+    price: 1000
+  CREEPER_HEAD:
+    name: "크리퍼 머리"
+    price: 1000
+  SKELETON_SKULL:
+    name: "스켈레톤 머리"
+    price: 1000
+  WITHER_SKELETON_SKULL:
+    name: "위더 스켈레톤 해골"
+    price: 800
+  PIGLIN_HEAD:
+    name: "피글린 머리"
+    price: 1200
+  ROTTEN_FLESH:
+    name: "썩은 살점"
+    price: 20
+  BONE:
+    name: "뼈"
+    price: 20
+  GUNPOWDER:
+    name: "화약"
+    price: 30
+  MUSIC_DISC_11:
+    name: "음반 11"
+    price: 10000
+  MUSIC_DISC_LAVA_CHICKEN:
+    name: "음반 Lava Chicken"
+    price: 100000000
+  STRING:
+    name: "실"
+    price: 10
+  SPIDER_EYE:
+    name: "거미 눈"
+    price: 30
+  GHAST_TEAR:
+    name: "가스트 눈물"
+    price: 500
+  SLIME_BALL:
+    name: "슬라임볼"
+    price: 650
+  MAGMA_CREAM:
+    name: "마그마 크림"
+    price: 850
+  NETHER_STAR:
+    name: "네더의 별"
+    price: 1000000
+  TROPICAL_FISH:
+    name: "열대어"
+    price: 2
+  PUFFERFISH:
+    name: "복어"
+    price: 10
+  DRAGON_EGG:
+    name: "드래곤 알"
+    price: 10000000
+  PHANTOM_MEMBRANE:
+    name: "팬텀막"
+    price: 400

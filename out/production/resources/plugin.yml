@@ -1,0 +1,42 @@
+name: EconomyPlugin
+version: 1.0-SNAPSHOT
+main: org.economyplugin.economy.Economy
+api-version: 1.20
+
+commands:
+  pay:
+    description: 다른 플레이어에게 돈을 보냅니다.
+    usage: /pay <닉네임> <금액>
+  money:
+    description: 자신의 또는 다른 플레이어의 잔액을 확인합니다.
+    usage: /money [닉네임]
+  sethome:
+    description: 현재 위치를 홈으로 설정합니다.
+    usage: /sethome
+  home:
+    description: 설정된 홈으로 이동합니다.
+    usage: /home
+  tpa:
+    description: 다른 플레이어에게 텔레포트 요청을 보냅니다.
+    usage: /tpa <닉네임>
+  tpaccept:
+    description: 텔레포트 요청을 수락합니다.
+    usage: /tpaccept
+  tpdeny:
+    description: 텔레포트 요청을 거절합니다.
+    usage: /tpdeny
+  setmoney:
+    description: 플레이어의 돈을 설정합니다.
+    usage: /setmoney <닉네임> <금액>
+    permission: economy.setmoney
+  addmoney:
+    description: 플레이어의 돈을 추가합니다.
+    usage: /addmoney <닉네임> <금액>
+    permission: economy.addmoney
+  removemoney:
+    description: 플레이어의 돈을 차감합니다.
+    usage: /removemoney <닉네임> <금액>
+    permission: economy.removemoney
+  spawn:
+    description: 서버 스폰 위치로 이동합니다.
+    usage: /spawn
