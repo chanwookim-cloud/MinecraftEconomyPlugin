@@ -18,6 +18,7 @@ import org.bukkit.persistence.PersistentDataType;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays; // 배열을 리스트로 변환하기 위해 추가
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -256,6 +257,26 @@ public class BuyMenu {
             }
         }
 
+        // --- 특별 액션 아이템 추가: 네더의 별 (잡담) ---
+        ItemStack actionItem = new ItemStack(Material.NETHER_STAR);
+        ItemMeta actionMeta = actionItem.getItemMeta();
+        if (actionMeta != null) {
+            int actionPrice = 1000000; // 100만원
+            actionMeta.setDisplayName("§d잡담");
+            actionMeta.setLore(Arrays.asList(
+                    "§7가격: §a" + actionPrice + "원",
+                    "§7클릭 시 아이템을 얻는 대신,",
+                    "§7특별한 메시지를 받습니다."
+            ));
+            PersistentDataContainer pdc = actionMeta.getPersistentDataContainer();
+            pdc.set(shopKey, PersistentDataType.STRING, "GOSSIP_STAR"); // 식별자
+            pdc.set(priceKey, PersistentDataType.INTEGER, actionPrice);
+            pdc.set(kindKey, PersistentDataType.STRING, "action_item"); // 새로운 종류
+            actionItem.setItemMeta(actionMeta);
+        }
+        items.add(actionItem);
+        // --- 끝 ---
+
         // 페이지 분할 및 GUI 생성 로직
         final int perPage = 45;
         totalPages = (int) Math.ceil((double) items.size() / perPage);
@@ -375,23 +396,34 @@ public class BuyMenu {
             return;
         }
 
-        // 1. 인벤토리 공간 확인
-        if (player.getInventory().firstEmpty() == -1) {
-            player.sendMessage("§c[상점] 인벤토리가 가득 찼습니다. 공간을 확보해주세요.");
-            player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_USE, 1.0f, 1.0f);
-            return;
-        }
-
-        // 2. 잔액 확인
+        // 1. 잔액 확인 (모든 아이템 공통)
         if (money.getBalance(player) < price) {
             player.sendMessage("§c[상점] 잔액이 부족합니다. 현재 잔액: §a" + money.getBalance(player) + "원");
             player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_USE, 1.0f, 1.0f);
             return;
         }
 
-        // 3. 돈 차감 (모든 검증을 통과한 후 차감)
-        money.takeMoney(player, price);
+        // --- A. 특별 액션 아이템 처리 (공간 불필요) ---
+        if ("action_item".equals(kind) && "GOSSIP_STAR".equals(pKey)) {
+            money.takeMoney(player, price); // 돈 차감
 
+            // 메시지 전송 (메시지 내용은 여기서 수정 가능)
+            player.sendMessage("§d[잡담] 내가 하고 싶은 이야기\n힘들었을텐데 여기까지 와줘서 고마워!\n난 당분간은 코딩 안하려고..\n너무 많이해서 지쳤거든..\n그리고 시간이 갈수록 재미도 없고 억지로 하는 기분만 들더라\n그래서 나 당분간은 쉬려고\n유튜브도 보고 게임도 하고 책도 읽으면서\n물론 원래도 했어!\n근데 요즘 제대로 하는 느낌이 안들더라..\n아 그리고 타자 연습도 해야겠다!\n암튼 이렇게 긴글 읽어줘서 고맙고 또 재밌게 즐겨줘서 고마워:)\n(추신:아 나도 롤 해볼까?)");
+            player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
+            return;
+        }
+        // ------------------------------------
+
+
+        // 2. 인벤토리 공간 확인 (물리적 아이템만 해당)
+        if (player.getInventory().firstEmpty() == -1) {
+            player.sendMessage("§c[상점] 인벤토리가 가득 찼습니다. 공간을 확보해주세요.");
+            player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_USE, 1.0f, 1.0f);
+            return;
+        }
+
+        // 3. 돈 차감 (물리적 아이템: 잔액/공간 확인 후 차감)
+        money.takeMoney(player, price);
 
         // 인챈트북 처리
         if ("enchanted_book".equals(kind)) {

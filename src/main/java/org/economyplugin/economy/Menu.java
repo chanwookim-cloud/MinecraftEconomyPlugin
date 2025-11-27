@@ -38,7 +38,7 @@ public class Menu {
         inv.setItem(3, createItem(Material.EMERALD, "§a구매 상점"));
         inv.setItem(4, createItem(Material.BARRIER, "§c닫기"));
         inv.setItem(5, createItem(Material.DIAMOND, "§b판매 상점"));
-        inv.setItem(7, createItem(Material.BOOK, "§f설명"));
+        inv.setItem(7, createItem(Material.BOOK, "§f코딩 질리도록 해서 당분간은 절대 안함 ㅅㄱ"));
 
         player.openInventory(inv);
     }

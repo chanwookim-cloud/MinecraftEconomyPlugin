@@ -15,7 +15,7 @@ import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.potion.PotionType; // PotionType은 여전히 일부 상황에서 유용할 수 있습니다.
+import org.bukkit.potion.PotionType;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -23,8 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
+import java.util.logging.Logger;
 
 import static org.economyplugin.economy.Menu.createItem;
 
@@ -33,15 +32,16 @@ public class SellMenu {
 
     private final Economy plugin;
     private final Money money;
+    private final Logger logger;
 
     private final List<Inventory> pages = new ArrayList<>();
     private int totalPages;
 
-    // Potions data loaded from config for fast lookup (Key: PotionEffectType Name String)
+    // 판매 가능한 포션 데이터
     private final Map<String, PotionSellData> sellablePotions = new HashMap<>();
     private final Map<String, Double> multipliers = new HashMap<>();
 
-    // 설정 파일 키의 대소문자 불일치를 해결하기 위해 Material 이름(UPPERCASE)과 실제 config 키를 매핑합니다.
+    // 일반 아이템 매핑
     private final Map<String, String> materialKeyToConfigKey = new HashMap<>();
 
     private final NamespacedKey shopKey;
@@ -51,6 +51,7 @@ public class SellMenu {
     public SellMenu(Economy plugin, Money money) {
         this.plugin = plugin;
         this.money = money;
+        this.logger = plugin.getLogger();
 
         this.shopKey = new NamespacedKey(plugin, "shop_key");
         this.priceKey = new NamespacedKey(plugin, "shop_price");
@@ -59,15 +60,13 @@ public class SellMenu {
         loadItems();
     }
 
-    // Internal class to hold Potion selling data
     private static class PotionSellData {
-        // PotionType 대신 포션 효과 타입의 문자열 이름을 사용합니다.
-        final String effectTypeName;
+        final String typeKey;
         final String name;
         final int price;
 
-        PotionSellData(String effectTypeName, String name, int price) {
-            this.effectTypeName = effectTypeName;
+        PotionSellData(String typeKey, String name, int price) {
+            this.typeKey = typeKey;
             this.name = name;
             this.price = price;
         }
@@ -83,19 +82,23 @@ public class SellMenu {
     }
 
     public void onGuiClick(Player player, int slot, ItemStack clicked) {
-        int currentPage = getPageFromTitle(player.getOpenInventory().getTitle());
+        if (!player.isOnline() || player.getOpenInventory().getTitle() == null) return;
 
-        // Footer button handling
+        int currentPage = getPageFromTitle(player.getOpenInventory().getTitle());
+        Inventory openInventory = player.getOpenInventory().getTopInventory();
+
+        // Footer button handling (slots 45-53)
         if (slot >= 45) {
             if (slot == 47) { // Go to Buy Menu
                 if (plugin.getBuyMenu() != null) {
                     plugin.getBuyMenu().openBuyMenu(player, 0);
                 }
             } else if (slot == 49) { // Page navigation
-                if (currentPage + 1 < totalPages) {
-                    nextPage(player, currentPage);
-                } else if (currentPage > 0) {
-                    openSellMenu(player, 0);
+                int nextPage = currentPage + 1;
+                if (nextPage < totalPages) {
+                    openSellMenu(player, nextPage); // 다음 페이지로 이동
+                } else if (totalPages > 1) {
+                    openSellMenu(player, 0); // 처음으로 돌아가기
                 }
             } else if (slot == 52) { // Back
                 if (plugin.getMenu() != null) {
@@ -104,16 +107,21 @@ public class SellMenu {
             } else if (slot == 51) { // Sell All Button
                 handleSellAllClick(player);
             }
+
+            // Update balance icon
+            ItemStack balItem = createItem(Material.GOLD_INGOT, "§e잔액: §6" + money.getBalance(player) + "원");
+            openInventory.setItem(45, balItem);
             return;
         }
 
-        // Item Sell handling (Clicking the display icon in the GUI)
+        // Item Sell handling (GUI 아이콘 클릭)
         handleSellClick(player, clicked);
 
         // Update balance icon
         ItemStack balItem = createItem(Material.GOLD_INGOT, "§e잔액: §6" + money.getBalance(player) + "원");
-        player.getOpenInventory().setItem(45, balItem);
+        openInventory.setItem(45, balItem);
     }
+
     // ------------------------------------
 
     private void loadItems() {
@@ -128,72 +136,99 @@ public class SellMenu {
 
         List<ItemStack> items = new ArrayList<>();
 
-        // 1. Load 'sell' section from items.yml (General Items to be displayed)
+        // 1. Load 'sell' section from items.yml (General Items)
         if (itemsConfig.isConfigurationSection("sell")) {
             for (String key : itemsConfig.getConfigurationSection("sell").getKeys(false)) {
                 Material mat = Material.matchMaterial(key);
-                if (mat == null) {
-                    plugin.getLogger().warning("[SellMenu] Unknown material in items.yml 'sell' section: " + key);
-                    continue;
-                }
+                if (mat == null) continue;
 
                 String name = itemsConfig.getString("sell." + key + ".name", key);
                 int price = itemsConfig.getInt("sell." + key + ".price", 0);
                 if (price <= 0) continue;
 
-                // config key의 대소문자에 관계없이 Material.name()으로 맵핑하여 가격 조회에 사용
                 materialKeyToConfigKey.put(mat.name(), key);
 
                 ItemStack item = new ItemStack(mat);
                 ItemMeta meta = item.getItemMeta();
                 if (meta != null) {
                     meta.setDisplayName("§b" + name + " §7(1개 당 " + price + "원)");
-                    meta.setLore(Collections.singletonList("§7클릭하여 1개 판매"));
+                    meta.setLore(Collections.singletonList("§7클릭하여 1개 판매 (순수 아이템만)"));
 
                     PersistentDataContainer pdc = meta.getPersistentDataContainer();
-                    // PDC에는 Material.name() (UPPERCASE)을 저장하여 일관성 유지
                     pdc.set(shopKey, PersistentDataType.STRING, mat.name());
                     pdc.set(priceKey, PersistentDataType.INTEGER, price);
                     pdc.set(kindKey, PersistentDataType.STRING, "sell_item");
-
                     item.setItemMeta(meta);
                 }
                 items.add(item);
             }
         }
 
-        // 2. Load 'sell_potions' and 'multipliers' from potions.yml (For Sell All logic)
+        // 2. Load 'sell_potions' and 'multipliers' from potions.yml
         ConfigurationSection sellPotionsSection = potionConfig.getConfigurationSection("sell_potions");
         if (sellPotionsSection != null) {
             for (String key : sellPotionsSection.getKeys(false)) {
                 ConfigurationSection config = sellPotionsSection.getConfigurationSection(key);
                 if (config == null) continue;
 
-                // 이제 type 필드는 PotionEffectType의 이름(문자열)을 받습니다.
                 String effectTypeStr = config.getString("type", "");
                 String name = config.getString("name", key);
                 int price = config.getInt("price", 0);
 
+                if (price <= 0) continue;
+
                 PotionEffectType pEffectType = null;
-                try {
-                    if (!effectTypeStr.isEmpty()) {
-                        // PotionEffectType.getByName() 대신 PotionEffectType.getByKey()를 사용합니다.
-                        // 하지만 호환성을 위해 문자열로 받아 UPPERCASE로 변환하여 맵 키로 사용합니다.
-                        pEffectType = PotionEffectType.getByName(effectTypeStr.toUpperCase(Locale.ROOT));
-                    }
-                } catch (Exception e) {
-                    plugin.getLogger().warning("[SellMenu] Invalid PotionEffectType in potions.yml: " + effectTypeStr + ". Error: " + e.getMessage());
-                    continue;
+                if (!effectTypeStr.isEmpty()) {
+                    pEffectType = PotionEffectType.getByName(effectTypeStr.toUpperCase(Locale.ROOT));
                 }
 
-                // 이 경우 Water, Mundane, Thick, Awkward와 같이 효과가 없는 포션은
-                // 별도로 처리하거나, config에서 'type'을 정의하지 않도록 해야 합니다.
-                // 일단 효과 타입 문자열을 맵의 키로 저장합니다.
-                if (!effectTypeStr.isEmpty() && price > 0) {
-                    sellablePotions.put(effectTypeStr.toUpperCase(Locale.ROOT), new PotionSellData(effectTypeStr.toUpperCase(Locale.ROOT), name, price));
+                String upperTypeKey;
+                ItemStack potionItem = new ItemStack(Material.POTION);
+                PotionMeta potionMeta = (PotionMeta) potionItem.getItemMeta();
+
+                // --- 포션 유형 처리 ---
+                if (pEffectType != null) {
+                    // 1. 효과 포션 (SPEED, HEAL 등)
+                    upperTypeKey = pEffectType.getName().toUpperCase(Locale.ROOT);
+
+                    try {
+                        // Base PotionType은 효과가 있는 포션에만 설정 시도
+                        PotionType baseType = PotionType.valueOf(upperTypeKey);
+                        potionMeta.setBasePotionType(baseType);
+                    } catch (Exception ignored) {
+                        // 일치하는 PotionType이 없으면 무시 (예: HEAL 타입이 HEALING으로 다름)
+                        // 대신 PotionEffectType을 추가하여 아이콘을 만듭니다.
+                        potionMeta.addCustomEffect(new PotionEffect(pEffectType, 20 * 60, 0), true);
+                    }
+
+                    potionMeta.addCustomEffect(new PotionEffect(pEffectType, 20 * 60, 0), true);
+                    potionMeta.setDisplayName("§b" + name + " 포션 §7(기본 1개당 " + price + "원)");
                 } else {
-                    plugin.getLogger().warning("[SellMenu] Invalid Price or Type in potions.yml: " + key);
+                    // 2. 기본 포션 (WATER, MUNDANE 등)
+                    upperTypeKey = key.toUpperCase(Locale.ROOT);
+                    try {
+                        PotionType baseType = PotionType.valueOf(upperTypeKey);
+                        potionMeta.setBasePotionType(baseType);
+                    } catch (IllegalArgumentException e) {
+                        logger.warning("[SellMenu] Unknown PotionType for basic potion: " + key);
+                    }
+                    potionMeta.setDisplayName("§b" + name + " §7(1개당 " + price + "원)");
                 }
+
+                List<String> lore = new ArrayList<>();
+                lore.add("§7클릭하여 1개 판매 (인벤토리에서 매칭되는 포션)");
+                lore.add("§7강화/확장/투척 포션은 추가 이익이 있습니다.");
+                potionMeta.setLore(lore);
+
+                sellablePotions.put(upperTypeKey, new PotionSellData(upperTypeKey, name, price));
+
+                PersistentDataContainer pdc = potionMeta.getPersistentDataContainer();
+                pdc.set(shopKey, PersistentDataType.STRING, upperTypeKey); // 판매 기준 키 (SPEED, WATER 등)
+                pdc.set(priceKey, PersistentDataType.INTEGER, price);
+                pdc.set(kindKey, PersistentDataType.STRING, "sell_potion");
+
+                potionItem.setItemMeta(potionMeta);
+                items.add(potionItem);
             }
         }
 
@@ -204,7 +239,6 @@ public class SellMenu {
                 multipliers.put(key.toUpperCase(Locale.ROOT), multiplier);
             }
         }
-
 
         // Inventory Paging Logic
         final int perPage = 45;
@@ -231,258 +265,315 @@ public class SellMenu {
         if (inv == null) return;
 
         inv.setItem(47, createItem(Material.EMERALD, "§a구매 메뉴로 이동"));
-
-        // Sell All Button
         inv.setItem(51, createItem(Material.HOPPER, "§e모든 아이템 판매", Collections.singletonList("§7인벤토리의 판매 가능한 모든 아이템(포션 포함)을 판매합니다.")));
+        inv.setItem(52, createItem(Material.BARRIER, "§c뒤로"));
+        inv.setItem(50, createItem(Material.GRAY_STAINED_GLASS_PANE, " "));
+        inv.setItem(53, createItem(Material.GRAY_STAINED_GLASS_PANE, " "));
 
+        // 페이지 이동 버튼 텍스트 수정
         String pageText;
-        Material pageIcon = Material.ARROW;
+        Material pageIcon;
         if (totalPages <= 1) {
             pageText = "§7페이지 없음";
+            pageIcon = Material.BARRIER;
         } else if (currentPage < totalPages - 1) {
             pageText = "§a다음 페이지 §7(" + (currentPage + 2) + "/" + totalPages + ")";
-            pageIcon = Material.LIME_STAINED_GLASS_PANE;
+            pageIcon = Material.ARROW;
         } else {
-            pageText = "§c처음으로 돌아가기 §7(1/" + totalPages + ")";
-            pageIcon = Material.RED_STAINED_GLASS_PANE;
+            pageText = "§c이전 페이지 §7(1/" + totalPages + ")";
+            pageIcon = Material.ARROW;
         }
         inv.setItem(49, createItem(pageIcon, pageText));
 
-        inv.setItem(52, createItem(Material.BARRIER, "§c뒤로"));
-
-        // 경계선 채우기
-        for (int slot : new int[]{46, 48, 50, 53}) {
+        for (int slot : new int[]{46, 48}) {
             inv.setItem(slot, createItem(Material.GRAY_STAINED_GLASS_PANE, " "));
         }
     }
 
     public void openSellMenu(Player player, int page) {
         if (pages.isEmpty()) loadItems();
-        if (pages.isEmpty()) {
-            Inventory empty = Bukkit.createInventory(null, 54, BASE_TITLE + " (1/1)");
-            addFooterTemplates(empty, 0);
-            pages.add(empty);
-            totalPages = 1;
-        }
+        if (pages.isEmpty()) return;
 
         if (page < 0) page = 0;
         if (page >= totalPages) page = totalPages - 1;
 
         Inventory base = pages.get(page);
-
-        // Create a new inventory view for the player
         String title = BASE_TITLE + " (" + (page + 1) + "/" + totalPages + ")";
         Inventory view = Bukkit.createInventory(player, base.getSize(), title);
 
         view.setContents(base.getContents());
-
-        // Update balance display
         view.setItem(45, createItem(Material.GOLD_INGOT, "§e잔액: §6" + money.getBalance(player) + "원"));
 
         player.openInventory(view);
     }
 
-    // Sell 1 item by clicking the GUI icon (Only handles general items)
+    // --- Potion Utility Methods ---
+
+    /**
+     * 포션 아이템의 완전한 식별자(예: LONG_SPEED, MUNDANE, WATER)를 반환합니다.
+     * PotionType이 우선하며, 없으면 PotionEffectType을 사용합니다.
+     */
+    private String getPotionIdentifier(PotionMeta meta) {
+        // 1. Base Potion Type (가장 정확한 포션 타입을 반환)
+        try {
+            if (meta.hasBasePotionType()) {
+                return meta.getBasePotionType().name().toUpperCase(Locale.ROOT);
+            }
+        } catch (Exception e) {
+            // 버전 호환성 문제시 무시
+        }
+
+        // 2. Custom Effect (효과 포션인 경우 효과 타입 반환)
+        if (!meta.getCustomEffects().isEmpty()) {
+            return meta.getCustomEffects().get(0).getType().getName().toUpperCase(Locale.ROOT);
+        }
+
+        // 3. Fallback (물병 등)
+        return "WATER";
+    }
+
+    /**
+     * 식별자에서 LONG_, STRONG_ 접두사를 제거하고 기본 효과 키를 반환합니다.
+     */
+    private String getBasePotionKey(String fullKey) {
+        if (fullKey.startsWith("LONG_")) {
+            return fullKey.substring(5);
+        }
+        if (fullKey.startsWith("STRONG_")) {
+            return fullKey.substring(7);
+        }
+        return fullKey;
+    }
+
+    /**
+     * 해당 포션 식별자가 효과가 없는 기본 포션인지 확인합니다.
+     */
+    private boolean isBasicPotion(String identifier) {
+        return identifier.equals("WATER") || identifier.equals("AWKWARD") ||
+                identifier.equals("MUNDANE") || identifier.equals("THICK");
+    }
+
+
+    private long calculatePotionProfit(PotionMeta meta, Material type) {
+        String fullIdentifier = getPotionIdentifier(meta);
+
+        // 1. 가격을 찾을 기준 키 (baseKey) 결정
+        String baseKey;
+        if (isBasicPotion(fullIdentifier)) {
+            // 모든 기본 포션은 'WATER' 가격으로 통일 (설정 파일에 'WATER' 항목이 있어야 함)
+            baseKey = "WATER";
+        } else {
+            // 효과 포션은 기본 효과명(예: LONG_SPEED -> SPEED)으로 결정
+            baseKey = getBasePotionKey(fullIdentifier);
+        }
+
+        if (!sellablePotions.containsKey(baseKey)) {
+            return 0;
+        }
+
+        PotionSellData baseData = sellablePotions.get(baseKey);
+        double price = baseData.price;
+
+        // --- 멀티플라이어 적용 로직 ---
+
+        // 기본 포션이 아닌 경우 (효과가 있는 포션)에만 강화/확장 확인
+        if (!isBasicPotion(fullIdentifier)) {
+            boolean isUpgraded = false;
+            boolean isExtended = false;
+
+            // BasePotionType에서 확인 (가장 확실함)
+            if (meta.hasBasePotionType()) {
+                String typeName = meta.getBasePotionType().name();
+                if (typeName.contains("STRONG_")) isUpgraded = true;
+                if (typeName.contains("LONG_")) isExtended = true;
+            } else if (!meta.getCustomEffects().isEmpty()) {
+                // BasePotionType이 없으면 Custom Effect에서 확인
+                PotionEffect primaryEffect = meta.getCustomEffects().get(0);
+                if (primaryEffect.getAmplifier() > 0) isUpgraded = true;
+                if (primaryEffect.getDuration() > 3600) isExtended = true; // 3분 초과 시 확장
+            }
+
+            if (isUpgraded && multipliers.containsKey("UPGRADED")) price *= multipliers.get("UPGRADED");
+            if (isExtended && multipliers.containsKey("EXTENDED")) price *= multipliers.get("EXTENDED");
+        }
+
+
+        // 투척/잔류형 확인
+        if (type == Material.SPLASH_POTION && multipliers.containsKey("SPLASH")) price *= multipliers.get("SPLASH");
+        else if (type == Material.LINGERING_POTION && multipliers.containsKey("LINGERING")) price *= multipliers.get("LINGERING");
+
+        return (long) Math.round(price);
+    }
+
+    /**
+     * 아이템을 인벤토리에서 제거하고 돈을 지급하는 헬퍼 함수
+     */
+    private void performSell(Player player, ItemStack item, int slot, long profit, String displayName) {
+        if (item.getAmount() > 1) {
+            item.setAmount(item.getAmount() - 1);
+        } else {
+            player.getInventory().setItem(slot, null);
+        }
+
+        money.addMoney(player, (int) profit);
+        player.sendMessage("§a판매 완료: " + displayName + " §7(+" + profit + "원)");
+        player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
+    }
+
+    // --- Selling Handlers ---
+
     public void handleSellClick(Player player, ItemStack clicked) {
         if (clicked == null || clicked.getType() == Material.AIR) return;
-
         ItemMeta meta = clicked.getItemMeta();
         if (meta == null) return;
 
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
+        String kind = pdc.get(kindKey, PersistentDataType.STRING);
+        if (kind == null) return;
 
-        // 클릭된 아이템이 판매 메뉴 아이콘인지 확인
-        if (!"sell_item".equals(pdc.get(kindKey, PersistentDataType.STRING))) return;
+        String pKey = pdc.get(shopKey, PersistentDataType.STRING);
+        if (pKey == null) return;
 
-
-        int price = -1;
-        String pKey = null; // Material.name() (UPPERCASE)
-
-        Integer pdcPrice = pdc.get(priceKey, PersistentDataType.INTEGER);
-        String pdcKey = pdc.get(shopKey, PersistentDataType.STRING);
-        if (pdcPrice != null) price = pdcPrice;
-        if (pdcKey != null) pKey = pdcKey;
-
-        if (price <= 0 || pKey == null) {
-            player.sendMessage("§c판매할 수 없는 아이템입니다. (가격 또는 키 누락)");
-            return;
+        if ("sell_item".equals(kind)) {
+            handleSingleGeneralItemSell(player, pKey, meta);
+        } else if ("sell_potion".equals(kind)) {
+            handleSinglePotionSell(player, pKey, meta);
         }
+    }
 
-        // pKey는 Material.name()으로 저장되어 있음
-        Material targetMaterial = Material.getMaterial(pKey);
-        if (targetMaterial == null) {
-            player.sendMessage("§c판매 아이템을 찾을 수 없습니다.");
-            return;
-        }
-
-        // 판매 로직: 플레이어 인벤토리에서 해당 아이템을 찾아서 1개 제거 및 판매
+    private void handleSinglePotionSell(Player player, String targetKey, ItemMeta displayMeta) {
         ItemStack[] contents = player.getInventory().getContents();
         boolean itemSold = false;
+        String displayName = displayMeta.hasDisplayName() ? displayMeta.getDisplayName().replaceAll(" §7\\(.*\\)", "") : targetKey;
 
         for (int i = 0; i < contents.length; i++) {
             ItemStack item = contents[i];
+            if (item == null || !(item.getItemMeta() instanceof PotionMeta)) continue;
 
-            // ItemMeta가 없는 순수 아이템만 판매 가능하다고 가정
-            if (item != null && item.getType() == targetMaterial && !item.hasItemMeta()) {
-                // Deduct 1 item
-                if (item.getAmount() > 1) {
-                    item.setAmount(item.getAmount() - 1);
-                } else {
-                    player.getInventory().setItem(i, null);
+            PotionMeta itemMeta = (PotionMeta) item.getItemMeta();
+            // 인벤토리 포션의 전체 식별자 (예: LONG_SPEED, MUNDANE)
+            String itemIdentifier = getPotionIdentifier(itemMeta);
+
+            // 1. 인벤토리 포션의 '기본 키'를 추출합니다. (LONG_SPEED -> SPEED, MUNDANE/AWKWARD/THICK -> 자기 자신)
+            String inventoryBaseKey;
+
+            if (isBasicPotion(itemIdentifier)) {
+                // 기본 포션은 'WATER'와 매칭시키기 위해 별도 처리
+                inventoryBaseKey = itemIdentifier;
+            } else {
+                // 효과 포션은 접두사 제거 (LONG_SPEED -> SPEED)
+                inventoryBaseKey = getBasePotionKey(itemIdentifier);
+            }
+
+            // 2. GUI 항목의 targetKey(SPEED 또는 WATER)와 비교하여 매칭 여부를 확인합니다.
+            boolean matches = false;
+
+            // A. 효과 포션 매칭: 인벤토리의 기본 효과(SPEED)와 GUI의 키(SPEED)가 일치하는 경우
+            if (!isBasicPotion(itemIdentifier) && inventoryBaseKey.equals(targetKey)) {
+                matches = true;
+            }
+            // B. 기본 포션 매칭: GUI 키가 WATER이고, 인벤토리 포션이 기본 포션인 경우 (WATER, MUNDANE, AWKWARD, THICK)
+            else if ("WATER".equals(targetKey) && isBasicPotion(itemIdentifier)) {
+                matches = true;
+            }
+
+            if (matches) {
+                long profit = calculatePotionProfit(itemMeta, item.getType());
+                if (profit > 0) {
+                    performSell(player, item, i, profit, displayName);
+
+                    openSellMenu(player, getPageFromTitle(player.getOpenInventory().getTitle()));
+                    itemSold = true;
+                    break;
                 }
-
-                money.addMoney(player, price);
-
-                // getDisplayName()이 null일 경우를 대비하여 null 체크 및 안전한 문자열 처리
-                String displayName = meta.hasDisplayName() ? meta.getDisplayName().replaceAll(" §7\\(.*\\)", "") : targetMaterial.name();
-
-                player.sendMessage("§a판매 완료: " + displayName + " §7(+" + price + "원)");
-                player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
-
-                openSellMenu(player, getPageFromTitle(player.getOpenInventory().getTitle()));
-                itemSold = true;
-                break; // 1개만 판매하고 루프 종료
             }
         }
 
         if (!itemSold) {
-            player.sendMessage("§c판매할 아이템이 인벤토리에 없습니다. (순수 아이템만 판매 가능)");
+            player.sendMessage("§c인벤토리에서 일치하는 포션을 찾을 수 없습니다.");
+            player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_USE, 1.0f, 1.0f);
+        }
+    }
+
+    private void handleSingleGeneralItemSell(Player player, String targetKey, ItemMeta displayMeta) {
+        int price = displayMeta.getPersistentDataContainer().get(priceKey, PersistentDataType.INTEGER);
+        Material targetMaterial = Material.getMaterial(targetKey);
+        if (targetMaterial == null || price <= 0) return;
+
+        ItemStack[] contents = player.getInventory().getContents();
+        boolean itemSold = false;
+        String displayName = displayMeta.hasDisplayName() ? displayMeta.getDisplayName().replaceAll(" §7\\(.*\\)", "") : targetMaterial.name();
+
+        for (int i = 0; i < contents.length; i++) {
+            ItemStack item = contents[i];
+            if (item != null && item.getType() == targetMaterial && !item.hasItemMeta()) {
+                performSell(player, item, i, price, displayName);
+
+                openSellMenu(player, getPageFromTitle(player.getOpenInventory().getTitle()));
+                itemSold = true;
+                break;
+            }
+        }
+        if (!itemSold) {
+            player.sendMessage("§c판매할 순수 아이템(" + displayName + ")이 인벤토리에 없습니다.");
             player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_USE, 1.0f, 1.0f);
         }
     }
 
     // Sell ALL items including potions
     public void handleSellAllClick(Player player) {
-        if (sellablePotions.isEmpty() || multipliers.isEmpty()) {
-            loadItems(); // Ensure items and potions data are loaded
-            if (sellablePotions.isEmpty()) {
+        if (sellablePotions.isEmpty() && materialKeyToConfigKey.isEmpty()) {
+            loadItems();
+            if (sellablePotions.isEmpty() && materialKeyToConfigKey.isEmpty()) {
                 player.sendMessage("§c판매 설정이 로드되지 않았습니다.");
                 return;
             }
         }
 
         Map<Integer, Integer> amountsToSell = new HashMap<>();
-
         long totalProfit = 0;
         ItemStack[] contents = player.getInventory().getContents();
-
         FileConfiguration itemsConfig = plugin.getConfigManager().getItemsConfig();
 
-        // 1. Calculate profit and mark items for removal
         for (int i = 0; i < contents.length; i++) {
             ItemStack item = contents[i];
             if (item == null || item.getType() == Material.AIR) continue;
 
-            // --- 1.1 Handle General Items (from items.yml) ---
-            String materialName = item.getType().name(); // UPPERCASE
-            String configKey = materialKeyToConfigKey.get(materialName); // config에 정의된 원래 키 (소문자일 수 있음)
-
-            // 판매 가능 아이템이면서 순수 아이템인지 확인 (NBT나 커스텀 메타가 없는 기본 아이템)
-            if (configKey != null && item.getType().getMaxStackSize() > 1 && !item.hasItemMeta()) {
-                int pricePerItem = itemsConfig.getInt("sell." + configKey + ".price", 0);
-
-                if (pricePerItem > 0) {
-                    totalProfit += (long) item.getAmount() * pricePerItem;
-                    amountsToSell.put(i, item.getAmount());
+            long pricePerItem = 0;
+            if (item.getItemMeta() instanceof PotionMeta) {
+                pricePerItem = calculatePotionProfit((PotionMeta) item.getItemMeta(), item.getType());
+            } else {
+                String materialName = item.getType().name();
+                String configKey = materialKeyToConfigKey.get(materialName);
+                if (configKey != null && !item.hasItemMeta()) {
+                    pricePerItem = itemsConfig.getInt("sell." + configKey + ".price", 0);
                 }
-                continue;
             }
 
-            // --- 1.2 Handle Potions (from potions.yml) ---
-            if (item.getType() == Material.POTION || item.getType() == Material.SPLASH_POTION || item.getType() == Material.LINGERING_POTION) {
-                if (item.getItemMeta() instanceof PotionMeta) {
-                    PotionMeta meta = (PotionMeta) item.getItemMeta();
-
-                    // 포션 효과 목록을 가져옵니다.
-                    List<PotionEffect> effects = meta.getCustomEffects();
-
-                    // 물병, 애매한 포션 등 효과가 없는 포션을 처리합니다.
-                    if (effects.isEmpty()) {
-                        // Water Bottle, Awkward, Mundane, Thick Potion 등 기본 포션을 처리
-                        // 이들은 일반적으로 'type' 필드 없이 판매 항목에 정의되어야 합니다.
-                        // 하지만 현재 config 로딩 로직은 'type' 필드를 기반으로 맵을 생성하므로,
-                        // 임시로 "WATER" (가장 기본적인 PotionType)을 사용하거나 건너뜁니다.
-
-                        // 경고가 뜨는 PotionData를 사용하지 않기 위해 기본 포션을 처리하는 별도의 로직이 필요합니다.
-                        // 지금은 효과 목록이 비어 있으면 판매하지 않도록 처리하고, 유저에게 config 변경을 안내해야 합니다.
-                        plugin.getLogger().warning("Effect-less potion found. Current config logic requires PotionEffectType.");
-                        continue;
-                    }
-
-                    // 포션에 적용된 가장 주된 효과를 가져옵니다.
-                    // 복수 효과가 있더라도 첫 번째 효과만을 기준으로 판매 가격을 결정합니다.
-                    PotionEffect primaryEffect = effects.get(0);
-                    String effectName = primaryEffect.getType().getName().toUpperCase(Locale.ROOT);
-
-                    if (sellablePotions.containsKey(effectName)) {
-                        PotionSellData baseData = sellablePotions.get(effectName);
-                        double price = baseData.price;
-
-                        // 레벨이 1을 초과하면 강화로 간주 (Amplifier는 0부터 시작하므로 Level 2가 되려면 Amplifier가 1이어야 함)
-                        boolean isUpgraded = primaryEffect.getAmplifier() > 0;
-
-                        // 지속 시간이 기본 포션의 지속 시간보다 길면 확장으로 간주
-                        // (PotionMeta에 기본 지속 시간을 가져오는 쉬운 메서드가 없으므로,
-                        //  이전 코드처럼 1200틱을 기준으로 판단합니다. 이는 정확하지 않을 수 있습니다.)
-                        boolean isExtended = primaryEffect.getDuration() > 1200;
-
-                        if (isUpgraded && multipliers.containsKey("UPGRADED")) {
-                            price *= multipliers.get("UPGRADED");
-                        }
-
-                        if (isExtended && multipliers.containsKey("EXTENDED")) {
-                            price *= multipliers.get("EXTENDED");
-                        }
-
-                        // Apply Item Type multipliers (Splash/Lingering)
-                        if (item.getType() == Material.SPLASH_POTION && multipliers.containsKey("SPLASH")) {
-                            price *= multipliers.get("SPLASH");
-                        } else if (item.getType() == Material.LINGERING_POTION && multipliers.containsKey("LINGERING")) {
-                            price *= multipliers.get("LINGERING");
-                        }
-
-                        long itemProfit = (long) Math.round(price * item.getAmount());
-
-                        totalProfit += itemProfit;
-                        amountsToSell.put(i, item.getAmount()); // Mark for removal
-                    }
-                }
+            if (pricePerItem > 0) {
+                totalProfit += pricePerItem * item.getAmount();
+                amountsToSell.put(i, item.getAmount());
             }
         }
 
         if (totalProfit == 0) {
-            player.sendMessage("§c판매할 수 있는 기본 아이템 또는 포션이 인벤토리에 없습니다.");
+            player.sendMessage("§c판매할 수 있는 아이템이 없습니다.");
             player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_USE, 1.0f, 1.0f);
             return;
         }
 
-        // 2. Process removal and add money
         for (Map.Entry<Integer, Integer> entry : amountsToSell.entrySet()) {
             player.getInventory().setItem(entry.getKey(), null);
         }
 
         money.addMoney(player, (int) totalProfit);
-
-        player.sendMessage("§a[일괄 판매] 인벤토리의 모든 판매 가능 아이템을 판매했습니다.");
-        player.sendMessage("§a총 수익: §6" + totalProfit + "원");
+        player.sendMessage("§a[일괄 판매] 총 수익: §6" + totalProfit + "원");
         player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
-
-        // Update balance icon after selling
         openSellMenu(player, getPageFromTitle(player.getOpenInventory().getTitle()));
-    }
-
-    // --- Utility Methods ---
-    public void nextPage(Player player, int currentPage) {
-        if (currentPage + 1 < totalPages) openSellMenu(player, currentPage + 1);
-    }
-
-    public void previousPage(Player player, int currentPage) {
-        if (currentPage - 1 >= 0) openSellMenu(player, currentPage - 1);
     }
 
     public int getPageFromTitle(String title) {
         try {
-            // "판매 메뉴 | 페이지 (X/Y)" 형식에서 X 추출
             String inside = title.substring(title.indexOf("(") + 1, title.indexOf("/"));
             return Integer.parseInt(inside) - 1;
         } catch (Exception e) {

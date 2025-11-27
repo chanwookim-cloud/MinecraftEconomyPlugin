@@ -1,13 +1,12 @@
 package org.economyplugin.economy;
 
 import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.World;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.io.File;
+import java.util.logging.Level;
 
 public class Economy extends JavaPlugin {
  private static Economy instance;
@@ -19,11 +18,48 @@ public class Economy extends JavaPlugin {
  private NicknameManager nicknameManager;
  private ConfigManager configManager;
  private BukkitTask actionbarTask;
-
+ private BukkitTask autoSaveTask;
 
  @Override
  public void onEnable() {
-  // --- 1. config.yml 기본값 설정 및 저장 ---
+  // 1. Instance and Logger Setup (Must be first)
+  instance = this;
+  EconomyLogger.init(this);
+
+  // 2. Configuration and Resource Loading
+  setupConfigAndResources();
+
+  // 3. Initialize Managers and GUIs
+  initializeComponents();
+
+  // 4. Register Handlers
+  registerHandlers();
+
+  // 5. Start Scheduled Tasks
+  startScheduledTasks();
+
+  getLogger().info("EconomyPlugin enabled");
+ }
+
+ @Override
+ public void onDisable() {
+  // 1. Cancel Tasks
+  if (actionbarTask != null) actionbarTask.cancel();
+  if (autoSaveTask != null) autoSaveTask.cancel();
+
+  // 2. Final Data Save (Synchronous save is crucial before shutdown)
+  getLogger().info("[Save] Saving all data before shutdown...");
+  if (money != null) money.saveAll();
+  if (data != null) data.saveAll();
+
+  getLogger().info("EconomyPlugin disabled");
+ }
+
+ /**
+  * Handles setting up the main configuration file and required resources.
+  */
+ private void setupConfigAndResources() {
+  // config.yml defaults and save
   FileConfiguration config = getConfig();
   config.addDefault("gamble-block.world", "world");
   config.addDefault("gamble-block.x", 100);
@@ -31,48 +67,40 @@ public class Economy extends JavaPlugin {
   config.addDefault("gamble-block.z", -100);
   config.options().copyDefaults(true);
   saveConfig();
-  // ----------------------------------------------------
-  instance = this;
 
-  // ConfigManager 초기화 및 커스텀 리소스 파일 배포/로드 관리
+  // Distribute default resource files (safe: only saves if they don't exist)
+  saveResourceSafe("items.yml");
+  saveResourceSafe("potions.yml");
+  saveResourceSafe("enchanted_books.yml");
+ }
+
+ /**
+  * Initializes all core managers and GUI components.
+  */
+ private void initializeComponents() {
+  // ConfigManager initializes first to handle custom configs
   this.configManager = new ConfigManager(this);
 
-  // 월드 스폰 위치 설정 (기존 로직 유지)
-  World world = Bukkit.getWorlds().stream().findFirst().orElse(null);
-  if (world != null) {
-   Location spawn = new Location(world, 0, world.getHighestBlockYAt(0, 0) + 1, 0);
-   world.setSpawnLocation(spawn);
-   getLogger().info("World spawn set to (0,0,0)");
-  }
-
-  // 로거 초기화
-  EconomyLogger.init(this);
-
-  // --- 아이템 최대 스택 크기 99로 변경 시도 ---
-  // [FATAL ERROR FIX]: ItemMaxStackUtil에서 NoSuchFieldException 발생.
-  // 서버 버전 호환성 문제이므로 주석 처리합니다.
-  // ItemMaxStackUtil.setMaxStackSizeTo99(this);
-
-  // managers
+  // Data Managers (rely on ConfigManager for file paths)
   this.data = new Data(this);
   this.money = new Money(this);
-  // NicknameManager 초기화
   this.nicknameManager = new NicknameManager(this);
 
-  // --- GUI 초기화 (ConfigManager를 통해 설정 파일에 접근하도록 수정) ---
+  // GUIs
   this.buyMenu = new BuyMenu(this, money);
   this.sellMenu = new SellMenu(this, money);
 
-  // Menu 생성 (buyMenu, sellMenu가 먼저 생성되어야 함)
+  // Main Menu
   this.menu = new Menu(this, money, buyMenu, sellMenu);
-  // ----------------------------------------------------
+ }
 
-  // commands
+ /**
+  * Registers all plugin commands and event listeners.
+  */
+ private void registerHandlers() {
+  // Command Registration
   Cmds cmds = new Cmds(this, money, data, menu, nicknameManager);
-
-  // *** [수정] 상점 명령어는 /menu로 통일합니다. ***
   if (getCommand("menu") != null) getCommand("menu").setExecutor(cmds);
-
   if (getCommand("money") != null) getCommand("money").setExecutor(cmds);
   if (getCommand("pay") != null) getCommand("pay").setExecutor(cmds);
   if (getCommand("sethome") != null) getCommand("sethome").setExecutor(cmds);
@@ -89,27 +117,26 @@ public class Economy extends JavaPlugin {
   if (getCommand("name") != null) getCommand("name").setExecutor(cmds);
   if (getCommand("setgamble") != null) getCommand("setgamble").setExecutor(cmds);
 
-  // listeners 등록
-  Bukkit.getPluginManager().registerEvents(
-          new BuySellMenuListener(menu, buyMenu, sellMenu),
-          this
-  );
+  // Listener Registration
+  Bukkit.getPluginManager().registerEvents(new BuySellMenuListener(menu, buyMenu, sellMenu), this);
   Bukkit.getPluginManager().registerEvents(new NicknameListener(nicknameManager), this);
   Bukkit.getPluginManager().registerEvents(new BlockGambleListener(this, money), this);
   Bukkit.getPluginManager().registerEvents(new GameSpeedListener(this), this);
-
-  // actionbar task
-  this.actionbarTask = new ActionBarTask(money).runTaskTimer(this, 0L, 5L);
-
-  getLogger().info("EconomyPlugin enabled");
  }
 
- @Override
- public void onDisable() {
-  if (actionbarTask != null) actionbarTask.cancel();
-  if (money != null) money.saveAll();
-  if (data != null) data.saveAll();
-  getLogger().info("EconomyPlugin disabled");
+ /**
+  * Starts the repeating background tasks (Action Bar and Auto Save).
+  */
+ private void startScheduledTasks() {
+  // Action Bar Task (runs synchronously every 5 ticks)
+  this.actionbarTask = new ActionBarTask(money).runTaskTimer(this, 0L, 5L);
+
+  // Auto Save Task (runs asynchronously every 5 minutes / 6000 ticks)
+  this.autoSaveTask = Bukkit.getScheduler().runTaskTimerAsynchronously(this, () -> {
+   if (money != null) money.saveAll();
+   if (data != null) data.saveAll();
+   getLogger().info("[AutoSave] Data saved.");
+  }, 6000L, 6000L);
  }
 
  // getters
@@ -122,15 +149,20 @@ public class Economy extends JavaPlugin {
  public NicknameManager getNicknameManager() { return nicknameManager; }
  public ConfigManager getConfigManager() { return configManager; }
 
- // ConfigManager가 내부에서 처리하므로 이 메서드는 이제 사용되지 않을 수 있지만,
- // 기존 구조를 최대한 유지하기 위해 남겨둡니다.
+ /**
+  * Saves a resource file only if it does not already exist in the data folder.
+  * @param path The path to the resource.
+  */
  private void saveResourceSafe(String path) {
-  try {
-   File f = new File(getDataFolder(), path);
-   if (!f.exists()) {
+  File f = new File(getDataFolder(), path);
+  if (!f.exists()) {
+   try {
+    // saveResource(path, false) only saves if the file does not exist.
     saveResource(path, false);
+   } catch (IllegalArgumentException e) {
+    // Log if the resource path is invalid or the file is missing from the JAR.
+    getLogger().log(Level.WARNING, "Could not save resource: " + path + ". It might be missing in the JAR.", e);
    }
-  } catch (IllegalArgumentException ignored) {
   }
  }
 }
