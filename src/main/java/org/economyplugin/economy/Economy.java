@@ -4,6 +4,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
+import org.economyplugin.listeners.SleepListener; // <-- 새로 추가된 임포트
 
 import java.io.File;
 import java.util.logging.Level;
@@ -122,6 +123,7 @@ public class Economy extends JavaPlugin {
   Bukkit.getPluginManager().registerEvents(new NicknameListener(nicknameManager), this);
   Bukkit.getPluginManager().registerEvents(new BlockGambleListener(this, money), this);
   Bukkit.getPluginManager().registerEvents(new GameSpeedListener(this), this);
+  Bukkit.getPluginManager().registerEvents(new SleepListener(), this); // <-- 추가된 부분
  }
 
  /**
