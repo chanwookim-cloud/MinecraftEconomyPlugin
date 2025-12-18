@@ -37,7 +37,7 @@ public class Money {
     public int getBalance(OfflinePlayer player) {
         if (player == null) return 0;
         // 기본 잔액을 1000으로 설정하여 신규 플레이어에게 초기 자금 지급 (필요에 따라 0으로 변경 가능)
-        return balances.getOrDefault(player.getUniqueId(), 1000);
+        return balances.getOrDefault(player.getUniqueId(), 100);
     }
 
     public void setBalance(OfflinePlayer player, int amount) {
